@@ -1,36 +1,62 @@
+##############################################################################
+## IMPORT PACKAGES ##
 
 import numpy as np
-from numpy import exp,dot,full,cos,sin,real,imag,power,pi,log,sqrt,roll,linspace,arange,transpose,pad,complex128 as c128, float32 as f32, float64 as f64
-from numba import njit,jit,complex128 as nbc128, void
+from numpy import exp, dot, full, \
+    cos, sin, real, \
+        imag, power, pi, \
+            log, sqrt, roll,\
+                linspace, arange, transpose, \
+                    pad, complex128 as c128, float32 as f32, \
+                        float64 as f64
+
+from numba import njit, jit, complex128 as nbc128, void
+
 import os
 os.environ['NUMEXPR_MAX_THREADS'] = '16'
 os.environ['NUMEXPR_NUM_THREADS'] = '8'
+
 import numexpr as ne
+
 from lightbeam.mesh import RectMesh3D,RectMesh2D
 import lightbeam.optics as optics
-from lightbeam.misc import timeit, overlap, normalize,printProgressBar, overlap_nonu, norm_nonu
+from lightbeam.misc import timeit, overlap, normalize, \
+    printProgressBar, overlap_nonu, norm_nonu
 
+##############################################################################
 ### to do ###
 
 ## performance
 
 # maybe adaptive z stepping
-# get a better refinement criterion -- now weighting partially by 2nd deriv. still could use some work
+# get a better refinement criterion -- now weighting partially by 2nd deriv. 
+# still could use some work
 
-# more efficient ways to store arrays with many repeated values -- sparse data structure?
+# more efficient ways to store arrays with many repeated values 
+# -- sparse data structure?
 
 ## readability
 
+##############################################################################
 def genc(shape):
-    return np.empty(shape,dtype=c128,order='F')
+    return np.empty(shape, dtype=c128, order='F')
 
+##############################################################################
 def genf(shape):
-    return np.empty(shape,dtype=c128,order='F')
+    return np.empty(shape, dtype=c128, order='F')
 
-@njit(void(nbc128[:,:],nbc128[:,:],nbc128[:,:],nbc128[:,:],nbc128[:,:],nbc128[:,:]))
+##############################################################################
+
+## @njit decorator from Numba is applied to the tri_solve_vec function
+@njit(void(nbc128[:,:], nbc128[:,:], nbc128[:,:], 
+           nbc128[:,:], nbc128[:,:], nbc128[:,:]))
+
 def tri_solve_vec(a,b,c,r,g,u):
-    '''Apply Thomas' method for simultaneously solving a set of tridagonal systems. a, b, c, and r are matrices
-    (N rows) where each column corresponds a separate system'''
+    '''
+    Apply Thomas' method for simultaneously solving a set of tridagonal 
+    systems. a, b, c, and r are matrices (N rows) where each column 
+    corresponds a separate system
+    '''
 
     N = a.shape[0]
     beta = b[0]
@@ -45,9 +71,19 @@ def tri_solve_vec(a,b,c,r,g,u):
         k = N-2-j
         u[k] = u[k] - g[k+1]*u[k+1]
 
+##############################################################################
+##############################################################################
 class Prop3D:
-    '''beam propagator. employs finite-differences beam propagation with PML as the boundary condition. works on an adaptive mesh'''
-    def __init__(self,wl0,_mesh:RectMesh3D,optical_system:optics.OpticSys,n0):
+    '''
+    beam propagator. employs finite-differences beam propagation 
+    with PML as the boundary condition. works on an adaptive mesh
+    '''
+    
+    ##########################################################################
+    def __init__(self, wl0,
+                 _mesh:RectMesh3D,
+                 optical_system:optics.OpticSys, 
+                 n0):
         
         xymesh = _mesh.xy
 
@@ -76,13 +112,13 @@ class Prop3D:
 
         ## precomputing some stuff ##
 
-        Rx,Tupx,Tdox,Ry,Tupy,Tdoy = self.calculate_PML_mats()   
+        Rx, Tupx, Tdox, Ry, Tupy, Tdoy = self.calculate_PML_mats()   
 
         dx02 = _mesh.xy.dx0**2
         dy02 = _mesh.xy.dy0**2
 
-        K = k02*(nb2-n02)
-        n02 = power(n0,2)
+        K = k02*(nb2 - n02)
+        n02 = power(n0, 2)
 
         ## coeff matrices of tridiagonal system, updated periodically
 
@@ -102,9 +138,9 @@ class Prop3D:
 
         ## same as above but in PML zone
         
-        self._apmlx = sig/12. - 0.5/dx02*Tdox - K/48.
+        self._apmlx = sig/12. - 0.5/dx02 * Tdox - K/48.
         self._bpmlx = 5./6.*sig + Rx/dx02 - 5./24. * K
-        self._cpmlx = sig/12. - 0.5/dx02*Tupx - K/48.
+        self._cpmlx = sig/12. - 0.5/dx02 * Tupx - K/48.
 
         self.apmlx_ = sig/12. + 0.5/dx02*Tdox + K/48.
         self.bpmlx_ = 5./6.*sig - Rx/dx02 + 5./24. * K
@@ -123,8 +159,11 @@ class Prop3D:
         self.power = np.empty((_mesh.zres,))
         self.totalpower = np.empty((_mesh.zres,))
 
+    
+    ##########################################################################
     def allocate_mats(self):
-        sx,sy = self._mesh.xy.xg.shape,self._mesh.xy.yg.T.shape
+
+        sx, sy = self._mesh.xy.xg.shape, self._mesh.xy.yg.T.shape
         _trimatsx = (genc(sx),genc(sx),genc(sx))
         _trimatsy = (genc(sy),genc(sy),genc(sy))
 
@@ -134,23 +173,36 @@ class Prop3D:
 
         fill = self.nb2*self.k02
 
-        IORsq__ = np.full(sx,fill,dtype=f64)
-        _IORsq_ = np.full(sx,fill,dtype=f64)
-        __IORsq = np.full(sx,fill,dtype=f64)
+        IORsq__ = np.full(sx, fill, dtype=f64)
+        _IORsq_ = np.full(sx, fill, dtype=f64)
+        __IORsq = np.full(sx, fill, dtype=f64)
 
-        return _trimatsx,rmatx,gx,_trimatsy,rmaty,gy,IORsq__,_IORsq_,__IORsq
+        return _trimatsx, rmatx, gx, \
+            _trimatsy, rmaty, gy, \
+                IORsq__, _IORsq_, __IORsq
 
+    
+    ##########################################################################
     def check_z_inv(self):
         return self.optical_system.z_invariant
 
-    def set_IORsq(self,out,z,xg=None,yg=None):
+    ##########################################################################
+    def set_IORsq(self, out, z, 
+                  xg=None, yg=None):
+        
         #premultiply by k02 so we don't have to keep doing it later
-        self.optical_system.set_IORsq(out,z,xg,yg,coeff=self.k02)
+        self.optical_system.set_IORsq(out, z, xg,
+                                      yg, coeff=self.k02)
 
+    
+    ##########################################################################
     def calculate_PML_mats(self):
-        '''As per textbook <Beam Propagation Method for Design of Optical Waveguide Devices> , 
-        calculate the matrices R, T_j+1, and T_j-1 in the PML zone. We assume that the 
-        the PML's refractive index will be constant, equal to the background index.
+        '''
+        As per textbook <Beam Propagation Method for Design of Optical 
+        Waveguide Devices>, 
+        calculate the matrices R, T_j+1, and T_j-1 in the PML zone. We assume 
+        that the PML's refractive index will be constant, equal to the 
+        background index.
         '''
 
         m = self._mesh
@@ -158,47 +210,52 @@ class Prop3D:
 
         xverts = xy.pvert_xa
 
-        sdox = m.sigmax(xverts-xy.dx0)
+        sdox = m.sigmax(xverts - xy.dx0)
         sx = m.sigmax(xverts)
-        supx = m.sigmax(xverts+xy.dx0)
+        supx = m.sigmax(xverts + xy.dx0)
 
         yverts = xy.pvert_ya
-        sdoy = m.sigmay(yverts-xy.dy0)
+        sdoy = m.sigmay(yverts - xy.dy0)
         sy = m.sigmay(yverts)
-        supy = m.sigmay(yverts+xy.dy0)
+        supy = m.sigmay(yverts + xy.dy0)
 
-        Qdox = 1./(1.+1.j*sdox*self.nb2)
-        Qx = 1./(1.+1.j*sx*self.nb2)
-        Qupx = 1./(1.+1.j*supx*self.nb2)
+        Qdox = 1./(1.+ 1.j*sdox * self.nb2)
+        Qx = 1./(1.+ 1.j*sx * self.nb2)
+        Qupx = 1./(1.+ 1.j*supx * self.nb2)
 
-        Tupx = 0.5 * Qx * (Qx+Qupx)
-        Tdox = 0.5 * Qx * (Qx+Qdox)
-        Rx = 0.25 * Qx * (Qdox+2*Qx+Qupx)       
+        Tupx = 0.5 * Qx * (Qx + Qupx)
+        Tdox = 0.5 * Qx * (Qx + Qdox)
+        Rx = 0.25 * Qx * (Qdox + 2*Qx + Qupx)       
 
-        Qdoy = 1./(1.+1.j*sdoy*self.nb2)
-        Qy = 1./(1.+1.j*sy*self.nb2)
-        Qupy = 1./(1.+1.j*supy*self.nb2)
+        Qdoy = 1./(1.+ 1.j*sdoy * self.nb2)
+        Qy = 1./(1.+ 1.j*sy * self.nb2)
+        Qupy = 1./(1.+ 1.j*supy * self.nb2)
 
-        Tupy= 0.5 * Qy * (Qy+Qupy)
-        Tdoy = 0.5 * Qy * (Qy+Qdoy)
-        Ry = 0.25 * Qy * (Qdoy+2*Qy+Qupy)  
+        Tupy= 0.5 * Qy * (Qy + Qupy)
+        Tdoy = 0.5 * Qy * (Qy + Qdoy)
+        Ry = 0.25 * Qy * (Qdoy + 2*Qy + Qupy)  
 
-        return (Rx,Tupx,Tdox,Ry,Tupy,Tdoy)
+        return (Rx, Tupx, Tdox, \
+                Ry, Tupy, Tdoy)
 
-    def update_grid_cor_facs(self,which='x'):
+
+    ##########################################################################
+    def update_grid_cor_facs(self, which='x'):
         xy = self._mesh.xy
         ix = xy.cvert_ix
+        
         if which=='x':
             r = xy.rxa[ix]
             self.xgrid_cor_imask = np.where(r[1:-1]!=1)[0]
         else:
             r = xy.rya[ix]
             self.ygrid_cor_imask = np.where(r[1:-1]!=1)[0]
+        
         r2 = r*r
 
-        R1 = (r2 + r -1)/(6*r*(r+1))
-        R2 =  (r2 + 3*r + 1)/(6*r)
-        R3 = (-r2 + r + 1)/(6*(r+1))
+        R1 = (r2 + r - 1) / (6*r*(r+1))
+        R2 =  (r2 + 3*r + 1) / (6*r)
+        R3 = (-r2 + r + 1) / (6*(r+1))
 
         ## alternative values from paper
 
@@ -210,15 +267,19 @@ class Prop3D:
             self.xgrid_cor_facs[0] = R1
             self.xgrid_cor_facs[1] = R2
             self.xgrid_cor_facs[2] = R3
+       
         else:
             self.ygrid_cor_facs[0] = R1
             self.ygrid_cor_facs[1] = R2
             self.ygrid_cor_facs[2] = R3
 
-    def precomp_trimats(self,which='x'):
+    
+    ##########################################################################
+    def precomp_trimats(self, which='x'):
+
         ix = self._mesh.xy.cvert_ix
         s = self.sig    
-        nu0 = -self.k02*self.n02
+        nu0 = -self.k02 * self.n02
 
         eval1 = "s*r3 - 1/(r+1)/(d*d) - 0.25*r3*n"
         eval2 = "s*r2 + 1/r/(d*d) - 0.25*r2*n"
@@ -228,19 +289,30 @@ class Prop3D:
             R1,R2,R3 = self.xgrid_cor_facs
             r = self._mesh.xy.rxa[ix]
             dla = self._mesh.xy.dxa[ix]
-            self._a0x = ne.evaluate(eval1,local_dict={"s":s,"r3":R3[1:,None],"r":r[1:,None],"d":dla[1:,None],"n":nu0})
-            self._b0x = ne.evaluate(eval2,local_dict={"s":s,"r2":R2[:,None],"r":r[:,None],"d":dla[:,None],"n":nu0})
-            self._c0x = ne.evaluate(eval3,local_dict={"s":s,"r1":R1[:-1,None],"r":r[:-1,None],"d":dla[:-1,None],"n":nu0})
+            self._a0x = ne.evaluate(
+                eval1, local_dict={"s":s, "r3":R3[1:,None], "r":r[1:,None], "d":dla[1:,None], "n":nu0})
+            self._b0x = ne.evaluate(
+                eval2, local_dict={"s":s, "r2":R2[:,None], "r":r[:,None], "d":dla[:,None], "n":nu0})
+            self._c0x = ne.evaluate(
+                eval3, local_dict={"s":s, "r1":R1[:-1,None], "r":r[:-1,None], "d":dla[:-1,None], "n":nu0})
         else:
             R1,R2,R3 = self.ygrid_cor_facs
             r = self._mesh.xy.rya[ix]
             dla = self._mesh.xy.dya[ix]
-            self._a0y = ne.evaluate(eval1,local_dict={"s":s,"r3":R3[1:,None],"r":r[1:,None],"d":dla[1:,None],"n":nu0})
-            self._b0y = ne.evaluate(eval2,local_dict={"s":s,"r2":R2[:,None],"r":r[:,None],"d":dla[:,None],"n":nu0})
-            self._c0y = ne.evaluate(eval3,local_dict={"s":s,"r1":R1[:-1,None],"r":r[:-1,None],"d":dla[:-1,None],"n":nu0})
+            self._a0y = ne.evaluate(
+                eval1, local_dict={"s":s, "r3":R3[1:,None], "r":r[1:,None], "d":dla[1:,None], "n":nu0})
+            self._b0y = ne.evaluate(
+                eval2, local_dict={"s":s, "r2":R2[:,None], "r":r[:,None], "d":dla[:,None], "n":nu0})
+            self._c0y = ne.evaluate(
+                eval3, local_dict={"s":s, "r1":R1[:-1,None], "r":r[:-1,None], "d":dla[:-1,None], "n":nu0})
 
-    def _trimats(self,out,IORsq,which='x'):
-        ''' calculate the tridiagonal matrices in the computational zone '''
+
+    ##########################################################################
+    def _trimats(self, out, IORsq, 
+                 which='x'):
+        ''' 
+        calculate the tridiagonal matrices in the computational zone
+        '''
 
         ix = self._mesh.xy.cvert_ix
         _IORsq = IORsq[ix]
@@ -257,7 +329,7 @@ class Prop3D:
             dla = self._mesh.xy.dya[ix]
             a,b,c = self._a0y,self._b0y,self._c0y
             
-        _a,_b,_c = out
+        _a, _b, _c = out
 
         s = self.sig
 
@@ -265,32 +337,47 @@ class Prop3D:
         eval2 = "b - 0.25*r2*n"
         eval3 = "c - 0.25*r1*n"
         
-        ne.evaluate(eval1,local_dict={"a":a,"r3":R3[1:,None],"n":_IORsq[:-1]},out=_a[ix][1:])
-        ne.evaluate(eval2,local_dict={"b":b,"r2":R2[:,None],"n":_IORsq},out=_b[ix])
-        ne.evaluate(eval3,local_dict={"c":c,"r1":R1[:-1,None],"n":_IORsq[1:]},out=_c[ix][:-1])
+        ne.evaluate(
+            eval1, local_dict={"a":a, "r3":R3[1:,None], "n":_IORsq[:-1]}, out=_a[ix][1:])
+        ne.evaluate(
+            eval2, local_dict={"b":b, "r2":R2[:,None], "n":_IORsq}, out=_b[ix])
+        ne.evaluate(
+            eval3, local_dict={"c":c, "r1":R1[:-1,None], "n":_IORsq[1:]}, out=_c[ix][:-1])
 
-        _a[ix][0] = s*R3[0] - 1. / ((r[0]+1) * dla[0]*dla[0]) - 0.25*R3[0]*(_IORsq[0]-self.n02*self.k02)
-        _c[ix][-1] = s*R1[-1] - 1/r[-1]/(r[-1]+1)/(dla[-1]*dla[-1]) - 0.25*R1[-1]*(_IORsq[-1]-self.n02*self.k02)
+        _a[ix][0] = s*R3[0] - 1. / ((r[0]+1) * dla[0]*dla[0]) \
+            - 0.25*R3[0]*(_IORsq[0]-self.n02*self.k02)
+        
+        _c[ix][-1] = s*R1[-1] - 1/r[-1]/(r[-1]+1)/(dla[-1]*dla[-1]) \
+            - 0.25*R1[-1]*(_IORsq[-1]-self.n02*self.k02)
 
-    def rmat_pmlcorrect(self,_rmat,u,which='x'):
+    
+    ##########################################################################
+    def rmat_pmlcorrect(self, _rmat, u, 
+                        which='x'):
 
         if which == 'x':    
-            apml,bpml,cpml = self.apmlx_,self.bpmlx_,self.cpmlx_
+            apml, bpml, cpml = self.apmlx_, self.bpmlx_, self.cpmlx_
+        
         else:
-            apml,bpml,cpml = self.apmly_,self.bpmly_,self.cpmly_
+            apml, bpml, cpml = self.apmly_, self.bpmly_, self.cpmly_
 
         pix = self._mesh.xy.pvert_ix
 
         temp = np.empty_like(_rmat[pix])
 
-        temp[1:-1] = apml[1:-1,None]*u[pix-1][1:-1] + bpml[1:-1,None]*u[pix][1:-1] + cpml[1:-1,None]*u[pix+1][1:-1]
+        temp[1:-1] = apml[1:-1,None]*u[pix-1][1:-1] \
+            + bpml[1:-1,None]*u[pix][1:-1] + cpml[1:-1,None]*u[pix+1][1:-1]
 
         temp[0] = bpml[0]*u[0] + cpml[0]*u[1]
         temp[-1] = apml[-1]*u[-2] + bpml[-1]*u[-1]
 
         _rmat[pix] = temp
 
-    def rmat(self,_rmat,u,IORsq,which='x'):
+    
+    ##########################################################################
+    def rmat(self, _rmat, u, 
+             IORsq, which='x'):
+
         ix = self._mesh.xy.cvert_ix
         _IORsq = IORsq[ix]
         s = self.sig
@@ -299,29 +386,44 @@ class Prop3D:
             R1,R2,R3 = self.xgrid_cor_facs
             dla = self._mesh.xy.dxa[ix]
             r = self._mesh.xy.rxa[ix]
-            a,b,c = self.a0x_,self.b0x_,self.c0x_
+            a,b,c = self.a0x_, self.b0x_, self.c0x_
+        
         else:
             R1,R2,R3 = self.ygrid_cor_facs
             dla = self._mesh.xy.dya[ix]
             r = self._mesh.xy.rya[ix]
-            a,b,c = self.a0y_,self.b0y_,self.c0y_
+            a,b,c = self.a0y_, self.b0y_, self.c0y_
 
         N = self.n02*self.k02
         m = np.s_[1:-1,None]
 
-        _dict = _dict = {"a":a,"b":b,"c":c,"u1":u[ix][:-2],"u2":u[ix][1:-1],"u3":u[ix][2:],"n1":_IORsq[:-2],"n2":_IORsq[1:-1],"n3":_IORsq[2:],"r3":R3[m],"r2":R2[m],"r1":R1[m] }
+        _dict = _dict = {"a":a, "b":b, "c":c, 
+                         "u1":u[ix][:-2], "u2":u[ix][1:-1], "u3":u[ix][2:], 
+                         "n1":_IORsq[:-2], "n2":_IORsq[1:-1], "n3":_IORsq[2:],
+                         "r3":R3[m], "r2":R2[m], "r1":R1[m] }
+        
         _eval = "(a+0.25*r3*n1)*u1 + (b+0.25*r2*n2)*u2 + (c+0.25*r1*n3)*u3"
 
-        ne.evaluate(_eval,local_dict=_dict,out=_rmat[ix][1:-1])
+        ne.evaluate(_eval, local_dict=_dict, out=_rmat[ix][1:-1])
 
-        _rmat[ix][0] = (s*R2[0] - 1/(r[0]*dla[0]**2 ) + 0.25*R2[0]*(_IORsq[0]-N))*u[0] + (s*R1[0] + 1/r[0]/(r[0]+1)/dla[0]**2 + 0.25*R1[0] * (_IORsq[1]-N) )*u[1]
-        _rmat[ix][-1] =  (s*R3[-1] + 1. / ((r[-1]+1) * dla[-1]**2) + 0.25*R3[-1]*(_IORsq[-2]-N))*u[-2] + (s*R2[-1] - 1/(r[-1]*dla[-1]**2) + 0.25*R2[-1]*(_IORsq[-1]-N))*u[-1]
+        _rmat[ix][0] = (s*R2[0] - 1/(r[0]*dla[0]**2 ) \
+                        + 0.25*R2[0]*(_IORsq[0]-N))*u[0] \
+                            + (s*R1[0] + 1/r[0]/(r[0]+1)/dla[0]**2 \
+                               + 0.25*R1[0] * (_IORsq[1]-N) )*u[1]
+        
+        _rmat[ix][-1] =  (s*R3[-1] + 1. / ((r[-1]+1) * dla[-1]**2) \
+                          + 0.25*R3[-1]*(_IORsq[-2]-N))*u[-2] \
+                            + (s*R2[-1] - 1/(r[-1]*dla[-1]**2) \
+                               + 0.25*R2[-1]*(_IORsq[-1]-N))*u[-1]
 
-    def rmat_precomp(self,which='x'):
+
+    ##########################################################################
+    def rmat_precomp(self, which='x'):
+
         ix = self._mesh.xy.cvert_ix
         s = self.sig
         n0 = -self.k02 * self.n02
-        m = np.s_[1:-1,None]
+        m = np.s_[1:-1, None]
 
         eval1="(s*r3+1/(r+1)/(d*d)+0.25*r3*n)"
         eval2="(s*r2-1/r/(d*d)+0.25*r2*n)"
@@ -332,21 +434,31 @@ class Prop3D:
             r = self._mesh.xy.rxa[ix]
             dla = self._mesh.xy.dxa[ix]
 
-            _dict = {"s":s,"r3":R3[m],"r":r[m],"d":dla[m],"n":n0,"r2":R2[m],"r1":R1[m]}
-            self.a0x_ = ne.evaluate(eval1,local_dict=_dict)
-            self.b0x_ = ne.evaluate(eval2,local_dict=_dict)
-            self.c0x_ = ne.evaluate(eval3,local_dict=_dict)
+            _dict = {"s":s, "r3":R3[m], "r":r[m],
+                      "d":dla[m], "n":n0, "r2":R2[m],
+                      "r1":R1[m]}
+            
+            self.a0x_ = ne.evaluate(eval1, local_dict=_dict)
+            self.b0x_ = ne.evaluate(eval2, local_dict=_dict)
+            self.c0x_ = ne.evaluate(eval3, local_dict=_dict)
+
         else:
             R1,R2,R3 = self.ygrid_cor_facs
             r = self._mesh.xy.rya[ix]
             dla = self._mesh.xy.dya[ix]
 
-            _dict = {"s":s,"r3":R3[m],"r":r[m],"d":dla[m],"n":n0,"r2":R2[m],"r1":R1[m]}
-            self.a0y_ = ne.evaluate(eval1,local_dict=_dict)
-            self.b0y_ = ne.evaluate(eval2,local_dict=_dict)
-            self.c0y_ = ne.evaluate(eval3,local_dict=_dict)
+            _dict = {"s":s, "r3":R3[m], "r":r[m],
+                     "d":dla[m], "n":n0, "r2":R2[m], 
+                     "r1":R1[m]}
+            
+            self.a0y_ = ne.evaluate(eval1, local_dict=_dict)
+            self.b0y_ = ne.evaluate(eval2, local_dict=_dict)
+            self.c0y_ = ne.evaluate(eval3, local_dict=_dict)
 
-    def _pmlcorrect(self,_trimats,which='x'):
+
+    ##########################################################################
+    def _pmlcorrect(self, _trimats, which='x'):
+
         ix = self._mesh.xy.pvert_ix
         _a,_b,_c = _trimats 
         
@@ -354,13 +466,25 @@ class Prop3D:
             _a[ix] = self._apmlx[:,None]
             _b[ix] = self._bpmlx[:,None]
             _c[ix] = self._cpmlx[:,None]
+
         else:
             _a[ix] = self._apmly[:,None]
             _b[ix] = self._bpmly[:,None]
             _c[ix] = self._cpmly[:,None]
 
+
+    
+
+
+    ##########################################################################
+
+    ## @timeit decorator is a custom decorator used to measure and report the 
+    # execution time of the decorated function or method
     @timeit 
-    def prop2end(self,_u,monitor_func=None,ref_val=5.e-6,remesh_every=20,dynamic_n0 = False,fplanewidth=0,writeto=None,xyslice=None,zslice=None):
+    def prop2end(self, _u, monitor_func=None,
+                 ref_val=5.e-6, remesh_every=20, dynamic_n0 = False,
+                 fplanewidth=0, writeto=None, xyslice=None,
+                 zslice=None):
         
         _mesh = self._mesh
         PML = _mesh.PML
@@ -370,24 +494,28 @@ class Prop3D:
             if xyslice is None and zslice is None:
                 # save everything
                 za_keep = _mesh.za
-                shape = (len(za_keep),*_mesh.xg.shape)
+                shape = (len(za_keep), *_mesh.xg.shape)
+
             else:
                 # save a slice
                 za_keep = _mesh.za[zslice]
-                shape = (len(za_keep),*_mesh.xg[xyslice].shape)
+                shape = (len(za_keep), *_mesh.xg[xyslice].shape)
 
-            self.field = np.zeros(shape,dtype=c128)
+            self.field = np.zeros(shape, dtype=c128)
 
         #pull xy mesh
         xy = _mesh.xy
-        dx,dy = xy.dx0,xy.dy0
+        dx, dy = xy.dx0, xy.dy0
 
         if fplanewidth == 0:
-            xa_in = np.linspace(-_mesh.xw/2,_mesh.xw/2,xy.shape0_comp[0])
-            ya_in = np.linspace(-_mesh.yw/2,_mesh.yw/2,xy.shape0_comp[1])
+            xa_in = np.linspace(-_mesh.xw/2, _mesh.xw/2, xy.shape0_comp[0])
+            ya_in = np.linspace(-_mesh.yw/2, _mesh.yw/2, xy.shape0_comp[1])
+
         else:
-            xa_in = np.linspace(-fplanewidth/2,fplanewidth/2,xy.shape0_comp[0])
-            ya_in = np.linspace(-fplanewidth/2,fplanewidth/2,xy.shape0_comp[1])
+            xa_in = np.linspace(-fplanewidth/2, fplanewidth/2, 
+                                xy.shape0_comp[0])
+            ya_in = np.linspace(-fplanewidth/2, fplanewidth/2, 
+                                xy.shape0_comp[1])
 
         dx0 = xa_in[1]-xa_in[0]
         dy0 = ya_in[1]-ya_in[0]
@@ -397,48 +525,68 @@ class Prop3D:
         # without being penalized by forcing the use of a low resolution
         # launch field
 
+        #### NKL ADD MONITORING ARRAY ####
+        # if monitor_u = True:
+        #     u_monitor = []
+        #     u_monitor.append(_u)
+        # # xy_mesh_monitor = []
+        ##################################
+
+
         if type(_u) is np.ndarray:
 
             _power = overlap(_u,_u)
-            print('input power: ',_power)
+            print('input power: ', _power)
 
-            # normalize the field, preserving the input power. accounts for grid resolution
-            normalize(_u,weight=dx0*dy0,normval=_power)
+            # normalize the field, preserving the input power. accounts for 
+            # grid resolution
+            normalize(_u, weight=dx0*dy0, normval=_power)
 
-            #resample the field onto the smaller xy mesh (in the smaller mesh's computation zone)
-            u0 = xy.resample_complex(_u,xa_in,ya_in,xy.xa[PML:-PML],xy.ya[PML:-PML])
+            # resample the field onto the smaller xy mesh 
+            # (in the smaller mesh's computation zone)
+            u0 = xy.resample_complex(_u, xa_in, ya_in,
+                                     xy.xa[PML:-PML], xy.ya[PML:-PML])
 
-            _power2 = overlap(u0,u0,dx*dy)
+            _power2 = overlap(u0, u0, dx*dy)
+
+            print('input power preserved: ', _power2) #NKL
 
             #now we pad w/ zeros to extend it into the PML zone
-            u0 = np.pad(u0,((PML,PML),(PML,PML)))
+            u0 = np.pad(u0, ((PML,PML), (PML,PML)))
 
             #initial mesh refinement
-            xy.refine_base(u0,ref_val)
+            xy.refine_base(u0, ref_val)
 
             weights = xy.get_weights()
 
             #now resample the field onto the smaller *non-uniform* xy mesh
-            u = xy.resample_complex(_u,xa_in,ya_in,xy.xa[PML:-PML],xy.ya[PML:-PML])
-            u = np.pad(u,((PML,PML),(PML,PML)))
+            u = xy.resample_complex(_u, xa_in, ya_in,
+                                    xy.xa[PML:-PML], xy.ya[PML:-PML])
+            u = np.pad(u, ((PML,PML), (PML,PML)))
 
-            #do another norm to correct for the slight power change you get when resampling. I measure 0.1% change for psflo. should check again
-            norm_nonu(u,weights,_power2)
+            # do another norm to correct for the slight power change you get 
+            # when resampling. I measure 0.1% change for psflo. should check again
+            norm_nonu(u, weights, _power2)
         
+
         elif callable(_u):
             # must be of the form u(x,y)
-            u0 = _u(xy.xg,xy.yg)
-            _power = overlap(u0,u0)
-            print('input power: ',_power)
+            u0 = _u(xy.xg, xy.yg)
+            _power = overlap(u0, u0)
+            print('input power: ', _power)
             
-            # normalize the field, preserving the input power. accounts for grid resolution
-            normalize(u0,weight=dx0*dy0,normval=_power)
+            # normalize the field, preserving the input power. accounts 
+            # for grid resolution
+            normalize(u0, weight=dx0*dy0, normval=_power)
+
+            print('input power after norm: ', 
+                  overlap(u0, u0, dx*dy)) #NKL
 
             # do an initial mesh refinement
-            xy.refine_base(u0,ref_val)
+            xy.refine_base(u0, ref_val)
 
             # compute the field on the nonuniform grid
-            u = norm_nonu(_u(xy.xg,xy.yg),xy.get_weights(),_power)
+            u = norm_nonu(_u(xy.xg,xy.yg), xy.get_weights(), _power)
 
         else:
             raise Exception("unsupported type for argument u in prop2end()")
@@ -448,8 +596,8 @@ class Prop3D:
 
         print("propagating field...")
         
-        __z = 0
-        z__ = 0
+        __z = 0 # end of z-step
+        z__ = 0 # start of z-step
 
         #step 0 setup
 
@@ -457,7 +605,9 @@ class Prop3D:
         self.update_grid_cor_facs('y')
 
         # initial array allocation
-        _trimatsx,rmatx,gx,_trimatsy,rmaty,gy,IORsq__,_IORsq_,__IORsq = self.allocate_mats()
+        _trimatsx, rmatx, gx, \
+            _trimatsy, rmaty, gy, \
+                IORsq__, _IORsq_, __IORsq = self.allocate_mats()
 
         self.precomp_trimats('x')
         self.precomp_trimats('y')
@@ -465,80 +615,101 @@ class Prop3D:
         self.rmat_precomp('x')
         self.rmat_precomp('y')
 
-        self._pmlcorrect(_trimatsx,'x')
-        self._pmlcorrect(_trimatsy,'y')
+        self._pmlcorrect(_trimatsx, 'x')
+        self._pmlcorrect(_trimatsy, 'y')
 
         #get the current IOR dist
-        self.set_IORsq(IORsq__,z__)
+        self.set_IORsq(IORsq__, z__)
 
         #plt.figure(frameon=False)
         #plt.imshow(xy.get_base_field(IORsq__))
         #plt.show()
 
-        print("initial shape: ",xy.shape)
-        for i in range(total_iters):       
+        print("initial shape: ", xy.shape)
+
+
+        for i in range(total_iters):
+
             if i%20 == 0: 
-                printProgressBar(i,total_iters-1)
+                printProgressBar(i, total_iters-1)
+
             u0 = xy.get_base_field(u)
             u0c = np.conj(u0)
             weights = xy.get_weights()
             
             ## Total power monitor ##
-            self.totalpower[i] = overlap_nonu(u,u,weights)
-            #print(self.totalpower[i])
+            self.totalpower[i] = overlap_nonu(u, u, weights)
+            # print('power monitor:', self.totalpower[i]) #NKL
+
 
             ## Other monitors ##
-            if monitor_func is not None:
-                monitor_field = norm_nonu(monitor_func(xy.xg,xy.yg),weights)
-                self.power[i] = power(overlap_nonu(u,monitor_field,weights),2)
+            if monitor_func is not None: #NKL
+                monitor_field = norm_nonu(monitor_func(xy.xg, xy.yg), weights)
+                self.power[i] = power(overlap_nonu(u, monitor_field, weights), 2)
+                # print('Power monitor:', self.power[i]) #NKL
 
-            _z_ = z__ + _mesh.half_dz
-            __z = z__ + _mesh.dz
+            _z_ = z__ + _mesh.half_dz   # middle of z-step
+            __z = z__ + _mesh.dz        # end of z-step
             
-            if self.field is not None and counter < len(za_keep) and __z == za_keep[counter]:
+            if (self.field is not None) and (counter < len(za_keep)) \
+                and (__z == za_keep[counter]):
                 # record the field
                 self.field[counter] = u0[xyslice]
                 counter += 1
 
             #avoid remeshing on step 0 
-            if (i+1)%remesh_every== 0:
+            if (i+1)%remesh_every == 0:
 
                 ## update the effective index
                 if dynamic_n0:
                     #update the effective index
                     base = xy.get_base_field(IORsq__)
-                    self.n02 = xy.dx0*xy.dy0*np.real(np.sum(u0c*u0*base))/self.k02
+                    self.n02 = xy.dx0 * xy.dy0 * np.real(np.sum(u0c*u0*base)) \
+                        / self.k02
 
-                oldxm,oldxM = xy.xm,xy.xM
-                oldym,oldyM = xy.ym,xy.yM
+                oldxm, oldxM = xy.xm, xy.xM
+                oldym, oldyM = xy.ym, xy.yM
 
-                oldxw,oldyw = xy.xw,xy.yw
+                oldxw, oldyw = xy.xw, xy.yw
 
-                new_xw,new_yw = oldxw,oldyw
+                new_xw, new_yw = oldxw, oldyw
+
                 #expand the grid if necessary
                 if _mesh.xwfunc is not None:
                     new_xw = _mesh.xwfunc(__z)
+
                 if _mesh.ywfunc is not None:
                     new_yw = _mesh.ywfunc(__z)
 
-                new_xw, new_yw = xy.snapto(new_xw,new_yw)
+                new_xw, new_yw = xy.snapto(new_xw, new_yw)
 
-                xy.reinit(new_xw,new_yw) #set grid back to base res with new dims
+                #set grid back to base res with new dims
+                xy.reinit(new_xw, new_yw) 
 
                 if (xy.xw > oldxw or xy.yw > oldyw):
-                    #now we need to pad u,u0 with zeros to make sure it matches the new space
-                    xpad = int((xy.shape0[0]-u0.shape[0])/2)
-                    ypad = int((xy.shape0[1]-u0.shape[1])/2)
+                    #now we need to pad u,u0 with zeros to make sure 
+                    # it matches the new space
+                    xpad = int((xy.shape0[0] - u0.shape[0]) / 2)
+                    ypad = int((xy.shape0[1] - u0.shape[1]) / 2)
 
-                    u = np.pad(u,((xpad,xpad),(ypad,ypad)))
-                    u0 = np.pad(u0,((xpad,xpad),(ypad,ypad)))
+                    u = np.pad(u, ((xpad,xpad), (ypad,ypad)))
+                    u0 = np.pad(u0, ((xpad,xpad), (ypad,ypad)))
 
                     #pad coord arrays to do interpolation
-                    xy.xa_last = np.hstack( ( np.linspace(xy.xm,oldxm-dx,xpad) , xy.xa_last , np.linspace(oldxM + dx, xy.xM,xpad) ) )
-                    xy.ya_last = np.hstack( ( np.linspace(xy.ym,oldym-dy,ypad) , xy.ya_last , np.linspace(oldyM + dy, xy.yM,ypad) ) )
+                    xy.xa_last = np.hstack( ( 
+                        np.linspace(xy.xm, oldxm-dx, xpad), 
+                        xy.xa_last, 
+                        np.linspace(oldxM+dx, xy.xM, xpad)
+                        ) )
+                    
+                    xy.ya_last = np.hstack( (
+                        np.linspace(xy.ym, oldym-dy, ypad), 
+                        xy.ya_last, 
+                        np.linspace(oldyM+dy, xy.yM, ypad)
+                        ) )
                    
                 #subdivide into nonuniform grid
-                xy.refine_base(u0,ref_val)
+                xy.refine_base(u0, ref_val)
 
                 #interp the field to the new grid   
                 u = xy.resample_complex(u)
@@ -550,11 +721,14 @@ class Prop3D:
                 self.update_grid_cor_facs('x')
                 self.update_grid_cor_facs('y')
 
-                # grid size has changed, so now we need to reallocate arrays for at least the next remesh_period iters
-                _trimatsx,rmatx,gx,_trimatsy,rmaty,gy,IORsq__,_IORsq_,__IORsq = self.allocate_mats()
+                # grid size has changed, so now we need to reallocate arrays 
+                # for at least the next remesh_period iters
+                _trimatsx, rmatx, gx, \
+                    _trimatsy, rmaty, gy, \
+                        IORsq__, _IORsq_, __IORsq = self.allocate_mats()
 
                 #get the current IOR dist
-                self.set_IORsq(IORsq__,z__)
+                self.set_IORsq(IORsq__, z__)
                 
                 #precompute things that will be reused
                 self.precomp_trimats('x')
@@ -563,77 +737,128 @@ class Prop3D:
                 self.rmat_precomp('x')
                 self.rmat_precomp('y')
                 
-                self._pmlcorrect(_trimatsx,'x')
-                self._pmlcorrect(_trimatsy,'y')
+                self._pmlcorrect(_trimatsx, 'x')
+                self._pmlcorrect(_trimatsy, 'y')
 
-            self.set_IORsq(_IORsq_,_z_,)
-            self.set_IORsq(__IORsq,__z)
+                #### NKL ADD MONITORING ARRAY ####
+                # if monitor_u = True
+                #     u_monitor.append(u)
+                # xy_mesh_monitor.append(xy)
+                ##################################
 
-            self.rmat(rmatx,u,IORsq__,'x')
-            self.rmat_pmlcorrect(rmatx,u,'x')
+            #**** why an extra comma? -> to differentiate {_z_ and __z}? ****
+            # *****************************
+            # def enter(self):
+            #     print('z__', z__)
+            #     print('_z_', _z_)
+            #     print('__z', __z)
+            # enter(self)
 
-            self._trimats(_trimatsx,_IORsq_,'x')
-            self._trimats(_trimatsy,__IORsq.T,'y')
+            self.set_IORsq(_IORsq_, _z_, ) # generates error *****
+            self.set_IORsq(__IORsq, __z)
 
-            tri_solve_vec(_trimatsx[0],_trimatsx[1],_trimatsx[2],rmatx,gx,u)
+            self.rmat(rmatx, u, IORsq__, 'x')
+            self.rmat_pmlcorrect(rmatx, u, 'x')
 
-            self.rmat(rmaty,u.T,_IORsq_.T,'y')
-            self.rmat_pmlcorrect(rmaty,u.T,'y')
+            self._trimats(_trimatsx, _IORsq_, 'x')
+            self._trimats(_trimatsy, __IORsq.T, 'y')
 
-            tri_solve_vec(_trimatsy[0],_trimatsy[1],_trimatsy[2],rmaty,gy,u.T)
+            tri_solve_vec(_trimatsx[0], _trimatsx[1], _trimatsx[2],
+                          rmatx, gx, u)
+
+            self.rmat(rmaty, u.T, _IORsq_.T, 'y')
+            self.rmat_pmlcorrect(rmaty, u.T, 'y')
+
+            tri_solve_vec(_trimatsy[0], _trimatsy[1], _trimatsy[2],
+                          rmaty, gy, u.T)
 
             z__ = __z
+            
             if (i+2)%remesh_every != 0:
                 IORsq__[:,:] = __IORsq
   
-        print("final total power",self.totalpower[-1])
+        print("final total power", self.totalpower[-1])
         
         if writeto:
-            np.save(writeto,self.field)
-        return u,u0
+            np.save(writeto, self.field)
 
+
+        # ## Extract weights -> NKL
+        # weights = xy.get_weights()
+        # Ensure weights and base field are updated for the FINAL u after all steps
+        u0 = xy.get_base_field(u)          # project final u onto current base grid if needed
+        weights = xy.get_weights()         # get fresh weights matching the final mesh state
+
+        #### NKL ADD MONITORING ARRAY ####
+        # if monitor_u = True
+        #     u_monitor.append(u)
+        # xy_mesh_monitor.append(xy)
+        ##################################
+
+
+        power_out = overlap_nonu(u, u, weights) # NKL
+
+        ## Wrong normalization -> NKL
+        # u_out_norm = u
+        # normalize(u_out_norm, weight=dx0*dy0, normval=power_out)
+        
+        print('power out check:', power_out) #NKL
+        
+        return u, u0, weights #, u_monitor
+
+
+    ##########################################################################
     @timeit 
-    def prop2end_uniform(self,u,xyslice=None,zslice=None,u1_func=None,writeto=None,dynamic_n0 = False,fplanewidth=0):
+    def prop2end_uniform(self, u, xyslice=None,
+                         zslice=None, u1_func=None, writeto=None,
+                         dynamic_n0=False, fplanewidth=0):
+        
         _mesh = self._mesh
         PML = _mesh.PML
 
         if not (xyslice is None and zslice is None):
             za_keep = _mesh.za[zslice]
+
             if type(za_keep) == np.ndarray:
-                minz, maxz = za_keep[0],za_keep[-1]
-                shape = (len(za_keep),*_mesh.xg[xyslice].shape)
+                minz, maxz = za_keep[0], za_keep[-1]
+                shape = (len(za_keep), *_mesh.xg[xyslice].shape)
+                
             else:
                 raise Exception('uhh not implemented')
             
-            self.field = np.zeros(shape,dtype=c128)
+            self.field = np.zeros(shape, dtype=c128)
 
         if fplanewidth == 0:
-            xa_in = np.linspace(-_mesh.xw/2,_mesh.xw/2,u.shape[0])
-            ya_in = np.linspace(-_mesh.yw/2,_mesh.yw/2,u.shape[1])
-        else:
-            xa_in = np.linspace(-fplanewidth/2,fplanewidth/2,u.shape[0])
-            ya_in = np.linspace(-fplanewidth/2,fplanewidth/2,u.shape[1])
+            xa_in = np.linspace(-_mesh.xw/2 ,_mesh.xw/2, u.shape[0])
+            ya_in = np.linspace(-_mesh.yw/2, _mesh.yw/2, u.shape[1])
 
-        dx0 = xa_in[1]-xa_in[0]
-        dy0 = ya_in[1]-ya_in[0]
+        else:
+            xa_in = np.linspace(-fplanewidth/2, fplanewidth/2, u.shape[0])
+            ya_in = np.linspace(-fplanewidth/2, fplanewidth/2, u.shape[1])
+
+        dx0 = xa_in[1] - xa_in[0]
+        dy0 = ya_in[1] - ya_in[0]
 
         _power = overlap(u,u)
         print('input power: ',_power)
 
-        # normalize the field, preserving the input power. accounts for grid resolution
-        normalize(u,weight=dx0*dy0,normval=_power)
+        # normalize the field, preserving the input power. accounts 
+        # for grid resolution
+        normalize(u, weight=dx0*dy0, normval=_power)
 
         __z = 0
 
         #pull xy mesh
         xy = _mesh.xy
-        dx,dy = xy.dx0,xy.dy0
+        dx, dy = xy.dx0, xy.dy0
 
-        #resample the field onto the smaller xy mesh (in the smaller mesh's computation zone)
-        u0 = xy.resample_complex(u,xa_in,ya_in,xy.xa[PML:-PML],xy.ya[PML:-PML])
+        #resample the field onto the smaller xy mesh 
+        # (in the smaller mesh's computation zone)
+        u0 = xy.resample_complex(u, xa_in, ya_in,
+                                 xy.xa[PML:-PML], xy.ya[PML:-PML])
 
         #now we pad w/ zeros to extend it into the PML zone
-        u0 = np.pad(u0,((PML,PML),(PML,PML)))
+        u0 = np.pad(u0, ((PML,PML), (PML,PML)))
 
         counter = 0
         total_iters = self._mesh.zres
@@ -648,7 +873,9 @@ class Prop3D:
         self.update_grid_cor_facs('y')
 
         # initial array allocation
-        _trimatsx,rmatx,gx,_trimatsy,rmaty,gy,IORsq__,_IORsq_,__IORsq = self.allocate_mats()
+        _trimatsx, rmatx, gx, \
+            _trimatsy, rmaty, gy, \
+                IORsq__, _IORsq_, __IORsq = self.allocate_mats()
 
         self.precomp_trimats('x')
         self.precomp_trimats('y')
@@ -656,58 +883,63 @@ class Prop3D:
         self.rmat_precomp('x')
         self.rmat_precomp('y')
 
-        self._pmlcorrect(_trimatsx,'x')
-        self._pmlcorrect(_trimatsy,'y')
+        self._pmlcorrect(_trimatsx, 'x')
+        self._pmlcorrect(_trimatsy, 'y')
 
         #get the current IOR dist
-        self.set_IORsq(IORsq__,z__)
+        self.set_IORsq(IORsq__, z__)
 
         weights = xy.get_weights()
 
-        print("initial shape: ",xy.shape)
-        for i in range(total_iters):       
+        print("initial shape: ", xy.shape)
+        for i in range(total_iters):
+
             if i%20 == 0: 
-                printProgressBar(i,total_iters-1)
+                printProgressBar(i, total_iters-1)
 
             ## Total power monitor ##
-            self.totalpower[i] = overlap_nonu(u0,u0,weights)
+            self.totalpower[i] = overlap_nonu(u0, u0, weights)
 
             ## Other monitors ##
             if u1_func is not None:
-                lp = norm_nonu(u1_func(xy.xg,xy.yg),weights)
-                self.power[i] = power(overlap_nonu(u0,lp,weights),2)
+                lp = norm_nonu(u1_func(xy.xg, xy.yg), weights)
+                self.power[i] = power(overlap_nonu(u0, lp, weights), 2)
 
             _z_ = z__ + _mesh.half_dz
             __z = z__ + _mesh.dz
             
             if self.field is not None and (minz<=__z<=maxz):
-                ix0,ix1,ix2,ix3 = _mesh.get_loc() 
+                ix0, ix1, ix2, ix3 = _mesh.get_loc() 
                 mid = int(u0.shape[1]/2)
 
                 self.field[counter][ix0:ix1+1] = u0[:,mid] ## FIX ##
                 counter+=1
 
-            self.set_IORsq(_IORsq_,_z_,)
-            self.set_IORsq(__IORsq,__z)
+            self.set_IORsq(_IORsq_, _z_,)
+            self.set_IORsq(__IORsq, __z)
 
-            self.rmat(rmatx,u0,IORsq__,'x')
-            self.rmat_pmlcorrect(rmatx,u0,'x')
+            self.rmat(rmatx, u0, IORsq__, 'x')
+            self.rmat_pmlcorrect(rmatx, u0, 'x')
 
-            self._trimats(_trimatsx,_IORsq_,'x')
-            self._trimats(_trimatsy,__IORsq.T,'y')
+            self._trimats(_trimatsx, _IORsq_, 'x')
+            self._trimats(_trimatsy, __IORsq.T ,'y')
 
-            tri_solve_vec(_trimatsx[0],_trimatsx[1],_trimatsx[2],rmatx,gx,u0)
+            tri_solve_vec(_trimatsx[0], _trimatsx[1], _trimatsx[2],
+                          rmatx, gx, u0)
 
-            self.rmat(rmaty,u0.T,_IORsq_.T,'y')
-            self.rmat_pmlcorrect(rmaty,u0.T,'y')
+            self.rmat(rmaty, u0.T, _IORsq_.T, 'y')
+            self.rmat_pmlcorrect(rmaty, u0.T, 'y')
 
-            tri_solve_vec(_trimatsy[0],_trimatsy[1],_trimatsy[2],rmaty,gy,u0.T)
+            tri_solve_vec(_trimatsy[0], _trimatsy[1], _trimatsy[2],
+                          rmaty, gy, u0.T)
 
             z__ = __z
             IORsq__[:,:] = __IORsq
   
-        print("final total power",self.totalpower[-1])
+        print("final total power", self.totalpower[-1])
         
         if writeto:
-            np.save(writeto,self.field)
+            np.save(writeto, self.field)
+            
         return u0
+    

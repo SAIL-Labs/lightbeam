@@ -1,15 +1,28 @@
+#%%
 # Michael Fitzgerald (mpfitz@ucla.edu)
 import numpy as np
-from numpy.fft import fftfreq, fft2, ifft2,fftshift
+from numpy.fft import fftfreq, fft2, ifft2, fftshift
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
+#%%
+##############################################################################
 def boiling_freq(k,t1):
     return np.power(k,2/3)/t1
 
-# from Srinath et al. (2015) 28 Dec 2015 | Vol. 23, No. 26 | DOI:10.1364/OE.23.033335 | OPTICS EXPRESS 33335
+##############################################################################
+# from Srinath et al. (2015) 28 Dec 2015 | Vol. 23, No. 26 | 
+# | DOI:10.1364/OE.23.033335 | OPTICS EXPRESS 33335 |
+
 class PhaseScreenGenerator(object):
-    def __init__(self, D, p, vy, vx, T, r0, wl0, wl, rs=None, seed=None, alpha_mag=1.,filter_func = None,filter_scale=None):
+
+    ##########################################################################
+    def __init__(self, D, p, 
+                 vy, vx, T, 
+                 r0, wl0, wl, 
+                 rs=None, seed=None, alpha_mag=1.,
+                 filter_func = None, filter_scale=None):
+        
         # set up random number generator
         if rs is None:
             rs = np.random.RandomState(seed=seed)
@@ -39,7 +52,9 @@ class PhaseScreenGenerator(object):
         
         # turbulent power spectrum
         with np.errstate(divide='ignore'):
-            self.P =   2.*np.pi/S * self.N * r0**(-5./6.) * (fy*fy + fx*fx)**(-11./12.) * np.sqrt(0.00058) * (wl0/wl)
+            self.P =   2.*np.pi/S * self.N * r0**(-5./6.) \
+                * (fy*fy + fx*fx)**(-11./12.) * np.sqrt(0.00058) * (wl0/wl)
+            
             self.P[0,0] = 0. # no infinite power
 
             if filter_func is not None:
@@ -59,7 +74,6 @@ class PhaseScreenGenerator(object):
             plt.show()
             """
            
-
         # set phase scale
         theta = -2.*np.pi*T*(fy*vy+fx*vx)
         self.alpha = alpha_mag*np.exp(1j*theta)#*np.exp(-T*boiling_freq(ff,0.27)) # |alpha|=1 is pure frozen flow 
@@ -71,6 +85,7 @@ class PhaseScreenGenerator(object):
 
         self.t = 0
 
+    ##########################################################################
     def generate(self):
         # generate white noise
 
@@ -98,8 +113,17 @@ class PhaseScreenGenerator(object):
         # need to generate from self.t up until t in steps of T
         pass
 
-def make_ani(out,t,dt,D=10,p=0.1,wl0=1,wl=1,vx=4,vy=0,r0=0.25,alpha=1,seed=345698,delay=20):
-    psgen = PhaseScreenGenerator(D, p, vy, vx, dt, r0, wl0, wl, seed=seed,alpha_mag=alpha)
+##############################################################################
+def make_ani(out, t, dt,
+             D=10, p=0.1, wl0=1,
+             wl=1, vx=4, vy=0, 
+             r0=0.25, alpha=1, seed=345698, 
+             delay=20):
+    
+    psgen = PhaseScreenGenerator(D, p, vy, 
+                                 vx, dt, r0, 
+                                 wl0, wl, seed=seed,
+                                 alpha_mag=alpha)
 
     # First set up the figure, the axis, and the plot element we want to animate
     fig = plt.figure()
@@ -125,6 +149,8 @@ def make_ani(out,t,dt,D=10,p=0.1,wl0=1,wl=1,vx=4,vy=0,r0=0.25,alpha=1,seed=34569
 
     plt.show()
 
+#%%
+##############################################################################
 if __name__=='__main__':
 
     import zernike as zk
@@ -151,7 +177,9 @@ if __name__=='__main__':
         wl = 1 #[um]
 
         seed = 123456
-        psgen = PhaseScreenGenerator(D, p, vy, vx, T, r0, wl0, wl, seed=seed)
+        psgen = PhaseScreenGenerator(D, p, vy, 
+                                     vx, T, r0, 
+                                     wl0, wl, seed=seed)
 
         xa = ya = np.linspace(-1,1,256)
         xg , yg = np.meshgrid(xa,ya)
@@ -273,3 +301,5 @@ if __name__=='__main__':
     #    ax.imshow(screen)
     #    pylab.draw()
     #    pylab.show()
+
+# %%

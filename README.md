@@ -1,17 +1,28 @@
 # lightbeam
 Simulate light through weakly guiding waveguides using the finite-differences beam propagation method on an adaptive grid.
 
+This repository is derived from:
+
+https://github.com/jw-lin/lightbeam.git
+
+The original implementation was developed by Jonathan Lin at MIT.
+
+Modifications are:
+* 19-core photonic lantern tutorial ` Lightbeam_19cpl_tutorial.ipynb` added to ` tutorial `
+* 19-core photonic latnern example script ` lightbeam_19cpl_example.py` added to ` tutorial `
+* Output field `u` weights returned from ` prop2end `
+
 ## installation
 Use pip: 
 
 ```
-pip install git+https://github.com/jw-lin/lightbeam.git
+pip install git+https://github.com/SAIL-Labs/lightbeam.git
 ```
 
 Update:
 
 ```
-pip install --force-reinstall git+https://github.com/jw-lin/lightbeam.git
+pip install --force-reinstall git+https://github.com/SAIL-Labs/lightbeam.git
 ```
 
 Python dependencies: `numpy`,`scipy`,`matplotlib`,`numba`,`numexpr`,`jupyter`
