@@ -8,9 +8,9 @@ https://github.com/jw-lin/lightbeam.git
 The original implementation was developed by Jonathan Lin at MIT.
 
 Modifications are:
-* 19-core photonic lantern tutorial ` Lightbeam_19cpl_tutorial.ipynb` added to ` tutorial `
-* 19-core photonic latnern example script ` lightbeam_19cpl_example.py` added to ` tutorial `
-* Output field `u` weights returned from ` prop2end `
+* 19-core photonic lantern tutorial `Lightbeam_19cpl_tutorial.ipynb` added to `tutorial`
+* 19-core photonic latnern example script `lightbeam_19cpl_example.py` added to `tutorial`
+* Output field `u` weights returned from `prop2end`
 
 ## installation
 Use pip: 
