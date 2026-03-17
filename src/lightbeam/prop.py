@@ -796,13 +796,9 @@ class Prop3D:
         ##################################
 
 
-        power_out = overlap_nonu(u, u, weights) # NKL
-
-        ## Wrong normalization -> NKL
-        # u_out_norm = u
-        # normalize(u_out_norm, weight=dx0*dy0, normval=power_out)
+        # power_out = overlap_nonu(u, u, weights) # NKL
         
-        print('power out check:', power_out) #NKL
+        # print('power out check:', power_out) #NKL
         
         return u, u0, weights #, u_monitor
 

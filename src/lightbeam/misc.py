@@ -166,14 +166,13 @@ def gauss(xg, yg, theta,
 
 ##############################################################################
 def unweight_field(u_weighted, weights):
-    """Convert a weighted field to an unweighted field."""
-
-    # Average cell area (for uniform grid this is exact)
-    total_weight = np.sum(weights)
-    avg_cell_area = total_weight / u_weighted.size # total_weight / (dy * dx)
+    """
+    Convert a weighted field to an unweighted field, presercing the 
+    normalised total power (adiabatic transition through waveguide)
+    """
 
     # Unweighted field
-    u_unweighted = u_weighted * np.sqrt(avg_cell_area)
+    u_unweighted = u_weighted * np.sqrt(weights)
 
     return u_unweighted
 

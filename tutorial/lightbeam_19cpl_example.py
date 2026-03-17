@@ -47,10 +47,10 @@ z_len = 40000 # [um]
 num_PML = 10 # perfectly matched layers
 
 ds = 0.25 # [um]
-dz = 2 # [um]
+dz = 4 # [um]
 
 ## Adaptive meshing refinement ratio
-ref_val = 1e-2
+ref_val = 1
 
 ## Create Mesh
 _mesh = RectMesh3D(xw, yw, z_len,
@@ -180,9 +180,6 @@ for i in range(n_modes):
             
             ab = 'b'
 
-
-    # print('u0 shape =', np.shape(u0))
-    # print("Input power (uniform):", np.sum(np.abs(u0)**2) * ds * ds)
     
     #### propagation ####
     print("Propagating core:", i)
@@ -197,15 +194,12 @@ for i in range(n_modes):
     u_out_weighted, u_out_2, u_out_weights = prop.prop2end(u0,
                                                           ref_val=ref_val,
                                                           remesh_every=50)
+
     
-    # print('u_out_shape =', np.shape(u_out_weighted))
-    
-    ## Calculate Unweighted Output Field
+    ## Calculate Normalized Output Field (preserving noramlised power)
     u_out = unweight_field(u_out_weighted, u_out_weights)
 
-    # print("Output power (uniform):", np.sum(np.abs(u_out)**2) * ds * ds)
-    print("Output power (unweighted):", np.sum(np.abs(u_out_weighted)**2 \
-                                             * u_out_weights))
+    print("Output power check:", np.sum(np.abs(u_out)**2))
 
 
     ## Append output to list
