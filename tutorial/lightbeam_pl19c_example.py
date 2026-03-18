@@ -115,8 +115,6 @@ modes = [[0, 1],
           [2, 2],
           [3, 1],
           [3, 1],
-          [3, 2],
-          [3, 2],
           [4, 1],
           [4, 1],
           [5, 1],
@@ -124,7 +122,6 @@ modes = [[0, 1],
 
 
 n_modes = len(modes)
-
 modes_flip = ['cos', 'sin']
 
 ## Initialise Arrays to Store Data
@@ -152,45 +149,42 @@ for i in range(n_modes):
                                         modes[i][1],
                                         r_clad,
                                         wl,
-                                        n_core,
-                                        n_clad))
+                                        n_clad,
+                                        n_cap))
         
         ab = ''
         
     else:
         if i % 2 == 1:
-            u0 = normalize(LPmodes.lpfield_fixed(x_grid, y_grid, 
+            u0 = normalize(LPmodes.lpfield(x_grid, y_grid, 
                                             modes[i][0],
                                             modes[i][1],
                                             r_clad,
                                             wl,
-                                            n_core,
                                             n_clad,
+                                            n_cap,
                                             which=modes_flip[0]))
             
             ab = 'a'
 
         else:
-            u0 = normalize(LPmodes.lpfield_fixed(x_grid, y_grid, 
+            u0 = normalize(LPmodes.lpfield(x_grid, y_grid, 
                                             modes[i][0],
                                             modes[i][1],
                                             r_clad,
                                             wl,
-                                            n_core,
                                             n_clad,
+                                            n_cap,
                                             which=modes_flip[1]))
             
             ab = 'b'
   
-    
     #### propagation ####
     print("Propagating core:", i)
     prop = Prop3D(wl,       # wavelength
                 _mesh,      # mesh    
                 pl_19,      # optical system
                 n_clad)     # cladding refractive index
-
-    
     
     ## prop2end
     u_out_weighted, u_out_2, u_out_weights = prop.prop2end(u0,
