@@ -144,6 +144,8 @@ f_suffix = f'ds={ds}_dz={dz}_rv={ref_val}_xyw={xw}_zlen={z_len}_tr={taper_ratio}
 
 ## Loop Through Propagation Modes
 for i in range(n_modes):
+
+    ## Generate LP fields
     if modes[i][0] == 0:
         u0 = normalize(LPmodes.lpfield(x_grid, y_grid, 
                                         modes[i][0],
@@ -179,7 +181,7 @@ for i in range(n_modes):
                                             which=modes_flip[1]))
             
             ab = 'b'
-
+  
     
     #### propagation ####
     print("Propagating core:", i)
@@ -242,7 +244,6 @@ U_out_weights_array = np.array(U_out_weights_array)
 ### Save Outputs
 
 print("Saving...")
-
 
 U_out_weighted_data = h5py.File(f_path+'U_out_weighted_array_'+f_suffix+'.h5', 'w')
 U_out_weighted_data.create_dataset('U_out_weighted', data=U_out_weighted_array)
