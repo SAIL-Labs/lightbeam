@@ -96,6 +96,37 @@ def get_mode_cutoffs(l, mmax):
             return np.concatenate(((0.,), jn_zeros(l-1, mmax-1)))
         else:
             return np.array((0.,))
+        
+
+##############################################################################
+def get_beta(l, m, wl0, 
+             rcore, ncore, nclad):
+    
+    k0 = 2 * np.pi / wl0
+
+    V = get_V(k0, rcore, ncore, nclad)
+    b = get_b(l, m, V)
+
+    if np.isnan(b):
+        return np.nan
+
+    beta = k0 * np.sqrt(nclad**2 + b * (ncore**2 - nclad**2))
+
+    return beta
+
+
+##############################################################################
+def get_neff(l, m, wl0, 
+             rcore, ncore, nclad):
+    
+    beta = get_beta(l, m, wl0, rcore, ncore, nclad)
+
+    if np.isnan(beta):
+        return np.nan
+    
+    n_eff = beta * wl0 / (2 * np.pi)
+    
+    return n_eff
 
 
 ##############################################################################

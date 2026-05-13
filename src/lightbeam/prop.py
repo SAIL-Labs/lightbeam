@@ -13,8 +13,8 @@ from numpy import exp, dot, full, \
 from numba import njit, jit, complex128 as nbc128, void
 
 import os
-os.environ['NUMEXPR_MAX_THREADS'] = '16'
-os.environ['NUMEXPR_NUM_THREADS'] = '8'
+# os.environ['NUMEXPR_MAX_THREADS'] = '16'
+# os.environ['NUMEXPR_NUM_THREADS'] = '8'
 
 import numexpr as ne
 

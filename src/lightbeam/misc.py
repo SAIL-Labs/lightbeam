@@ -7,6 +7,10 @@ from bisect import bisect_left
 import time
 from scipy.interpolate import RectBivariateSpline
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from lightbeam import LPmodes
 
 ##############################################################################
 def getslices(bounds, arr):
@@ -217,3 +221,160 @@ def write_rsoft(fname, u0, xw,
     np.savetxt(fname+".dat", out.T, header = header, 
                fmt = "%f", comments="", newline="\n")
 
+##############################################################################
+def isolate_cores(E_complex,
+                  core_positions_um,
+                  ds=1.0,
+                  crop_size=80):
+    """
+    Uses the known physical core positions to isolate and centre each core.
+    *** Change to make crop size a function of core radius? ***
+    """
+    Ny, Nx = E_complex.shape
+
+    ## Centre positions of PL outputs
+    cy_global = (Ny - 1) / 2.0
+    cx_global = (Nx - 1) / 2.0
+
+    ## um -> pixels 
+    pos_pix = np.asarray(core_positions_um) / ds
+    pos_pix[:, 0] += cy_global
+    pos_pix[:, 1] += cx_global
+
+    # Radius in pixels
+    rad_pix = crop_size / 2
+
+    centered_cores = []
+
+    pos_pix_lo = (pos_pix-rad_pix).astype(int)
+    pos_pix_hi = (pos_pix+rad_pix).astype(int)
+
+    for i in range(len(pos_pix)):
+
+        core_crop = E_complex[pos_pix_lo[i,0]:pos_pix_hi[i,0],
+                              pos_pix_lo[i,1]:pos_pix_hi[i,1]]
+
+        centered_cores.append(core_crop)
+
+    return centered_cores
+
+###############################################################################
+def probe_field(cores, r_core_out, wl, 
+                n_core, n_clad, ds):
+    
+    N = cores[0].shape[0]
+    grid = (np.arange(N) - (N - 1)/2) * ds  # µm
+    X, Y = np.meshgrid(grid, grid)
+
+    u_lp01_probe = LPmodes.lpfield(X, Y, 
+                                  0, 
+                                  1, 
+                                  r_core_out, 
+                                  wl, n_core, 
+                                  n_clad)
+    
+    return u_lp01_probe
+
+
+##############################################################################
+def overlap_weighted(u1, u2, weights):
+    """
+    Weighted complex inner product (overlap integral)
+    """
+
+    c_lm = np.sum(np.conj(u1) * u2 * weights)
+
+    return c_lm
+
+
+##############################################################################
+def normalize_weighted(u, weights, normval=1.0):
+    """
+    Normalize so that inner_weighted(u,u,w) == normval (1)
+    """
+
+    p = np.real(overlap_weighted(u, u, weights))
+    if p == 0:
+        raise ValueError("Cannot normalize: zero weighted power.")
+    
+    u_norm = u * np.sqrt(normval / p)
+    
+    return u_norm
+
+##############################################################################
+def plot_6mode_transfer_matrix(P_lm_array, Phi_lm_array, 
+                           ds, dz, ref_val, wl, 
+                           r_core_ms, n_modes=6, n_cores=7, 
+                           save_fig=False, f_path=''):
+
+    mode_labels = ['LP01', 'LP02', 
+                   'LP11a', 'LP11b', 
+                   'LP21a', 'LP21b']
+
+    fig, (axs1, axs2) = plt.subplots(1, 2, 
+                                    figsize=(8.5, 5)) #, 
+                                    #  sharey=True)
+
+
+    im1 = axs1.imshow(np.transpose(P_lm_array),
+                vmin=0, vmax=np.amax(P_lm_array),
+            cmap='viridis') #,
+            #    origin='lower')
+    im2 = axs2.imshow(np.transpose(Phi_lm_array),
+                # vmin=-np.pi, vmax=np.pi,
+                vmin=0, vmax=2*np.pi,
+            cmap='twilight_shifted') #,
+            #    origin='lower')
+
+    axs1.set_title(f'Amplitude Transfer Matrix', fontsize=13)
+    axs2.set_title(f'Phase Transfer Matrix', fontsize=13)
+
+    axs1.set_ylabel(r'$\mathrm{Output \ Core}$', 
+                    fontsize=12)
+    axs2.set_ylabel(r'$\mathrm{Output \ Core}$', 
+                    fontsize=12)
+    axs1.set_xlabel(r'$\mathrm{Excited \ Mode}$',
+                    fontsize=12)
+    axs2.set_xlabel(r'$\mathrm{Excited \ Mode}$',
+                    fontsize=12)
+
+    divider = make_axes_locatable(axs1)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im1, cax=cax, 
+                orientation='vertical',
+                label="Power [W]")
+
+    divider = make_axes_locatable(axs2)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im2, cax=cax, 
+                orientation='vertical',
+                label="phase [rad]")
+
+    # axs2[0].axis('off')
+    # axs2[1].axis('off')
+
+    # fig2.colorbar(axp3, ax=axs2[0]) #, shrink=0.8) #, location='bottom')
+
+    axs1.set_xticks(ticks=np.arange(0,n_modes), 
+                        labels=mode_labels[:], 
+                        fontsize=11,
+                        rotation=90)
+    axs2.set_xticks(ticks=np.arange(0,n_modes), 
+                        labels=mode_labels[:], 
+                        fontsize=11,
+                        rotation=90)
+
+    axs1.set_yticks(ticks=np.arange(0,n_cores), 
+                        labels=np.arange(1,n_cores+1), 
+                        fontsize=11)
+    axs2.set_yticks(ticks=np.arange(0,n_cores), 
+                        labels=np.arange(1,n_cores+1), 
+                        fontsize=11)
+
+    plt.tight_layout()
+    plt.suptitle(f'wl={wl}um, r_core_ms={r_core_ms:.3f}um, ds={ds}um, dz={dz}um, ref_val={ref_val}')
+    if save_fig:
+        plt.savefig(f_path, format='pdf', dpi=600)
+    # plt.savefig('Figures/pl19/pl19_transfer_matrix'+f_suffix+'.png')
+                # format='pdf', dpi=600)
+    plt.show()

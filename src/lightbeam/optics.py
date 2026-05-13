@@ -506,17 +506,107 @@ class lant3_ms(OpticSys):
 
 
 
+# ##############################################################################
+# class lant7_hms(OpticSys):
+#     '''
+#         7 port lantern, infinite jacket, one core is bigger than the rest 
+#         to accept LP01 mode (HMS-PL)
+#     '''
+
+#     def __init__(self, rcore1, rcore2,
+#                  rclad, ncore, nclad,
+#                  njack, offset0, z_ex,
+#                  z_offset=0, scale_func=None, final_scale=1):
+        
+#         # t = 2*np.pi/6
+#         # core_locs = [[0,0]]
+
+#         # for i in range(6):
+#         #     core_locs.append([offset0*np.cos(i*t), offset0*np.sin(i*t)])
+
+
+#         core_locs = self.get_7port_positions(core_spacing=offset0)
+#         self.core_locs = core_locs
+        
+#         ## Fundamental Core
+#         core0 = scaled_cyl(core_locs[0], rcore1, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+        
+#         ## AO Cores
+#         core1 = scaled_cyl(core_locs[1], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+#         core2 = scaled_cyl(core_locs[2], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+#         core3 = scaled_cyl(core_locs[3], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+#         core4 = scaled_cyl(core_locs[4], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+#         core5 = scaled_cyl(core_locs[5], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+#         core6 = scaled_cyl(core_locs[6], rcore2, z_ex,
+#                            ncore, nclad, z_offset,
+#                            scale_func=scale_func, final_scale=final_scale)
+        
+        
+#         ## Cladding
+#         clad = scaled_cyl([0,0], rclad, z_ex, 
+#                           nclad, njack, z_offset,
+#                           scale_func=scale_func, final_scale=final_scale)
+        
+#         ## Combined Elements
+#         elmnts = [clad, core6, core5,
+#                   core4, core3, core2, 
+#                   core1, core0]
+        
+#         super().__init__(elmnts, njack)
+
+
+#     ## The @staticmethod decorator is used in Python to define a method 
+#     ## that belongs to a class but does not require access to 
+#     ## the instance (self)
+#     @staticmethod
+#     def get_7port_positions(core_spacing, plot=False):
+
+#         core_locs = [[0,0]]
+
+#         t = 2*np.pi/6
+
+#         for i in range(6):
+#             core_locs.append([core_spacing*np.cos(i*t), 
+#                               core_spacing*np.sin(i*t)])
+
+#         if not plot:
+#             return np.array(core_locs)
+
+#         for loc in core_locs:
+#             plt.plot(*loc,
+#                      marker='.', 
+#                      ms=10, 
+#                      color='k')
+        
+#         plt.axis('equal')
+#         plt.show()
+
+
 ##############################################################################
 class lant7_hms(OpticSys):
     '''
-        7 port lantern, infinite jacket, one core is bigger than the rest 
-        to accept LP01 mode (HMS-PL)
+        7 port lantern, infinite jacket, central core has a different radius
+        and refractive index than the rest to accept LP01 mode (HMS-PL)
     '''
 
-    def __init__(self, rcore1, rcore2,
-                 rclad, ncore, nclad,
-                 njack, offset0, z_ex,
-                 z_offset=0, scale_func=None, final_scale=1):
+    def __init__(self, 
+                rcore_ms, rcore_wfs,
+                rclad, ncore_ms,
+                ncore_wfs, nclad, njack,
+                offset0, z_ex, z_offset=0, 
+                scale_func=None, final_scale=1):
         
         t = 2*np.pi/6
         core_locs = [[0,0]]
@@ -527,28 +617,28 @@ class lant7_hms(OpticSys):
         self.core_locs = np.array(core_locs)
         
         ## Fundamental Core
-        core0 = scaled_cyl(core_locs[0], rcore1, z_ex,
-                           ncore, nclad, z_offset,
+        core0 = scaled_cyl(core_locs[0], rcore_ms, z_ex,
+                           ncore_ms, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
         
-        ## AO Cores
-        core1 = scaled_cyl(core_locs[1], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        ## WFS Cores
+        core1 = scaled_cyl(core_locs[1], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core2 = scaled_cyl(core_locs[2], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        core2 = scaled_cyl(core_locs[2], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core3 = scaled_cyl(core_locs[3], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        core3 = scaled_cyl(core_locs[3], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core4 = scaled_cyl(core_locs[4], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        core4 = scaled_cyl(core_locs[4], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core5 = scaled_cyl(core_locs[5], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        core5 = scaled_cyl(core_locs[5], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core6 = scaled_cyl(core_locs[6], rcore2, z_ex,
-                           ncore, nclad, z_offset,
+        core6 = scaled_cyl(core_locs[6], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
         
         
@@ -566,63 +656,88 @@ class lant7_hms(OpticSys):
 
 
 ##############################################################################
-class lant7_hms_nkl(OpticSys):
+class lant6_hms(OpticSys):
     '''
-        7 port lantern, infinite jacket, one core is bigger than the rest 
-        to accept LP01 mode (HMS-PL)
+        6 port hybrid mode-selective photonic lantern
     '''
 
-    def __init__(self, rcore1, rcore2,
-                 rclad, ncore_ms, nclad_ms,
-                 ncore_ao, nclad_ao, njack, 
-                 offset0, z_ex, z_offset=0, 
-                 scale_func=None, final_scale=1):
+    def __init__(self, 
+                rcore_ms, rcore_wfs,
+                rclad, ncore_ms,
+                ncore_wfs, nclad, njack, 
+                offset0, z_ex, z_offset=0,
+                scale_func=None, final_scale=1):
         
-        t = 2*np.pi/6
-        core_locs = [[0,0]]
 
-        for i in range(6):
-            core_locs.append([offset0*np.cos(i*t), offset0*np.sin(i*t)])
+        core_locs = self.get_6port_positions(core_spacing=offset0)
+        self.core_locs = core_locs
+        
+        # t = 2*np.pi/5
+        # core_locs = [[0,0]]
 
-        self.core_locs = np.array(core_locs)
-        
-        ## Fundamental Core
-        core0 = scaled_cyl(core_locs[0], rcore1, z_ex,
-                           ncore_ms, nclad_ms, z_offset,
+        # for i in range(5):
+        #     core_locs.append([offset0*np.cos(i*t), offset0*np.sin(i*t)])
+
+        # self.core_locs = np.array(core_locs)
+
+        ## Mode-Selective Core
+        core0 = scaled_cyl(core_locs[0], rcore_ms, z_ex,
+                           ncore_ms, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
         
-        ## AO Cores
-        core1 = scaled_cyl(core_locs[1], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
+        ## WFS Cores
+        core1 = scaled_cyl(core_locs[1], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset, 
                            scale_func=scale_func, final_scale=final_scale)
-        core2 = scaled_cyl(core_locs[2], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
+        core2 = scaled_cyl(core_locs[2], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core3 = scaled_cyl(core_locs[3], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
+        core3 = scaled_cyl(core_locs[3], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core4 = scaled_cyl(core_locs[4], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
+        core4 = scaled_cyl(core_locs[4], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core5 = scaled_cyl(core_locs[5], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
+        core5 = scaled_cyl(core_locs[5], rcore_wfs, z_ex,
+                           ncore_wfs, nclad, z_offset,
                            scale_func=scale_func, final_scale=final_scale)
-        core6 = scaled_cyl(core_locs[6], rcore2, z_ex,
-                           ncore_ao, nclad_ao, z_offset,
-                           scale_func=scale_func, final_scale=final_scale)
-        
         
         ## Cladding
-        clad = scaled_cyl([0,0], rclad, z_ex, 
-                          nclad_ao, njack, z_offset,
+        clad = scaled_cyl([0,0], rclad, z_ex,
+                          nclad, njack, z_offset,
                           scale_func=scale_func, final_scale=final_scale)
         
         ## Combined Elements
-        elmnts = [clad, core6, core5,
-                  core4, core3, core2, 
-                  core1, core0]
+        elmnts = [clad, core5, core4,
+                  core3, core2, core1,
+                  core0]
         
         super().__init__(elmnts, njack)
+
+    ## The @staticmethod decorator is used in Python to define a method 
+    ## that belongs to a class but does not require access to 
+    ## the instance (self)
+    @staticmethod
+    def get_6port_positions(core_spacing, plot=False):
+
+        t = 2*np.pi/5
+
+        core_locs = [[0,0]]
+
+        for i in range(5):
+            core_locs.append([core_spacing*np.cos(i*t), core_spacing*np.sin(i*t)])
+
+        if not plot:
+            return np.array(core_locs)
+
+        for loc in core_locs:
+            plt.plot(*loc,
+                    marker='.', 
+                    ms=10, 
+                    color='k')
+        
+        plt.axis('equal')
+        plt.show()
 
 
 ##############################################################################
