@@ -47,7 +47,7 @@ wl = 1.55 # wavelength [um]
 z_len = 50000 # [um] -> range {4.5, 6}
 
 ## Set the final cross-sectional scale
-taper_ratio = 20 # -> range {15, 25}
+taper_ratio = 20 # -> range {20, 25}
 
 ## Output Radii ##
 r_core_wfs_out = 3.25 # [um]
@@ -112,11 +112,15 @@ if calc_modes:
     norm_freq = LPmodes.get_V(wave_number, r_clad, n_clad,
                                 n_cap)
 
-    modes = LPmodes.get_modes(norm_freq)
+    guided_modes = LPmodes.get_modes(norm_freq)
 
     print("Calculated modes (LP(l,m)):")
-    for mode in modes:
+    for mode in guided_modes:
         print(f"LP{mode}")
+
+    expected_modes = [(0, 1), (0, 2), (1, 1), (2, 1)]
+    if [tuple(m) for m in guided_modes] != expected_modes:
+        raise SystemExit(f"Unexpected guided modes {guided_modes}; expected {expected_modes}. Halting.")
 
 #%%###########################################################################
 ### Worker Function
@@ -387,29 +391,40 @@ if plot_matrix:
 
 #%%###########################################################################
 
+def print_summary(P_lm_array, modes, n_modes, n_cores,
+                  z_len, taper_ratio, coef_r_ms,
+                  to_print=True, to_file=None):
+    def _body():
+        print("PL length:", z_len, "um")
+        print("taper_ratio:", taper_ratio)
+        print("mode selective core radius ratio:", coef_r_ms)
+
+        print("\nCheck each mode is guided (power ≈ 1):")
+        for i in range(n_modes):
+            mode = modes[i]
+            ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
+            print(f"LP{mode[0]}{mode[1]}{ab}: {np.sum(P_lm_array[i,:])}")
+
+        print("\nCheck ratio of LP01 in core 1 to other cores (want ≈ 0):")
+        lp01_core1 = P_lm_array[0, 0]
+        for j in range(1, n_cores):
+            print(f"  Core {j+1}/Core 1: {P_lm_array[0, j]/lp01_core1:.3f}")
+
+        print("\nCheck ratio of mode powers in core 1 (want LP01 ≈ 1):")
+        for i in range(n_modes):
+            mode = modes[i]
+            ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
+            print(f"  LP{mode[0]}{mode[1]}{ab}: {P_lm_array[i, 0]:.4f}")
+
+    if to_print:
+        _body()
+    if to_file is not None:
+        with open(to_file, 'w') as _f, contextlib.redirect_stdout(_f):
+            _body()
+        print(f"Summary written to {to_file}")
+
+
 f_txt_path = f_path + f_prefix + 'summary_' + f_suffix + '.txt'
-with open(f_txt_path, 'w') as _f, \
-        contextlib.redirect_stdout(_f):
-
-    print("PL length:", z_len, "um")
-    print("taper_ratio:", taper_ratio)
-    print("mode selective core radius ratio:", coef_r_ms)
-
-    print("\nCheck each mode is guided (power ≈ 1):")
-    for i in range(6):
-        mode = modes[i]
-        ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
-        print(f"LP{mode[0]}{mode[1]}{ab}: {np.sum(P_lm_array[i,:])}")
-
-    print("\nCheck ratio of LP01 in core 1 to other cores (want ≈ 0):")
-    lp01_core1 = P_lm_array[0, 0]
-    for j in range(1, n_cores):
-        print(f"  Core {j+1}/Core 1: {P_lm_array[0, j]/lp01_core1:.3f}")
-
-    print("\nCheck ratio of mode powers in core 1 (want LP01 ≈ 1):")
-    for i in range(n_modes):
-        mode = modes[i]
-        ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
-        print(f"  LP{mode[0]}{mode[1]}{ab}: {P_lm_array[i, 0]:.4f}")
-
-print(f"Summary written to {f_txt_path}")
+print_summary(P_lm_array, modes, n_modes, n_cores,
+              z_len, taper_ratio, coef_r_ms,
+              to_print=True, to_file=f_txt_path)
