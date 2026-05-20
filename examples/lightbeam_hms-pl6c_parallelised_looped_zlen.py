@@ -45,24 +45,24 @@ from lightbeam.prop import Prop3D
 f_path = '/import/roci1/nlon0790/Results/hms-pl6/'
 f_prefix = 'hms-pl6c_'
 
-wl = 1.55 # wavelength [um]
-
 ## Lengths of lantern to sweep
 z_len_list = [45000, 50000, 55000, 60000] # [um]
 
 ## Set the final cross-sectional scale
 taper_ratio = 20 # -> range {20, 25}
 
+coef_r_ms = 1.31 # free variable 
+
+##############################################################################
+
+wl = 1.55 # wavelength [um]
+
 ## Output Radii ##
 r_core_wfs_out = 3.25 # [um]
-
-coef_r_ms = 1.31 # free variable 
-r_core_ms_out = coef_r_ms * r_core_wfs_out  # [um]
-
 r_clad_out = 155 # [um]
-
 core_spacing_out = 102.5 # [um]
 
+r_core_ms_out = coef_r_ms * r_core_wfs_out  # [um]
 
 ## Refractive Indices ## -> sm-28
 n_core_wfs = 1.449 #.4467895 # 1
