@@ -11,7 +11,6 @@ import os
 
 # limit core usage
 os.environ["OMP_NUM_THREADS"] = "2"
-
 os.environ["OPENBLAS_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
 os.environ["NUMEXPR_NUM_THREADS"] = "2"
@@ -21,6 +20,7 @@ print("Thread limits set.")
 #%%###########################################################################
 ### Import Libraries and Modules
 
+import contextlib
 import numpy as np
 import h5py
 import matplotlib
@@ -44,27 +44,27 @@ from lightbeam.prop import Prop3D
 wl = 1.55 # wavelength [um]
 
 ## Length of lantern
-z_len = 50000 # [um]
+z_len = 50000 # [um] -> range {4.5, 6}
 
 ## Set the final cross-sectional scale
-taper_ratio = 6.25
+taper_ratio = 20 # -> range {15, 25}
 
 ## Output Radii ##
 r_core_wfs_out = 3.25 # [um]
 
-coef_r_ms = 1.219
+coef_r_ms = 1.31 # free variable 
 r_core_ms_out = coef_r_ms * r_core_wfs_out  # [um]
 
-r_clad_out = 62.5 # [um]
+r_clad_out = 155 # [um]
 
-core_spacing_out = 35 # [um]
+core_spacing_out = 102.5 # [um]
 
 
-## Refractive Indices ##
-n_core_wfs = 1.4467895
-n_core_ms = 1.4467895 #- delta_n_ms
-n_clad = 1.44
-n_cap = 1.4345
+## Refractive Indices ## -> sm-28
+n_core_wfs = 1.449 #.4467895 # 1
+n_core_ms = 1.449 #1.4467895 #- delta_n_ms
+n_clad = 1.444
+n_cap = 1.435
 
 
 #%%###########################################################################
@@ -100,6 +100,23 @@ x_grid, y_grid = _mesh.xg[num_PML:-num_PML, num_PML:-num_PML], \
     _mesh.yg[num_PML:-num_PML, num_PML:-num_PML]
 
 
+#%%###########################################################################
+### Calc Prop Modes for Lantern
+
+calc_modes = True # set to True to calculate modes instead of using hardcoded list
+
+if calc_modes:
+    # unnecessary to calculate NA for lantern modes, but included for completeness
+    numerical_aperture = LPmodes.get_NA(n_clad, n_cap)
+    wave_number = 2*np.pi/wl
+    norm_freq = LPmodes.get_V(wave_number, r_clad, n_clad,
+                                n_cap)
+
+    modes = LPmodes.get_modes(norm_freq)
+
+    print("Calculated modes (LP(l,m)):")
+    for mode in modes:
+        print(f"LP{mode}")
 
 #%%###########################################################################
 ### Worker Function
@@ -151,7 +168,8 @@ def propagate_mode(i):
 
 
 
-#%% Create Lantern Object
+#%%###########################################################################
+### Create Lantern Object
 
 pl_6 = optics.lant6_hms(r_core_ms, 
                         r_core_wfs,
@@ -166,19 +184,6 @@ pl_6 = optics.lant6_hms(r_core_ms,
                         scale_func=None,
                         final_scale=taper_ratio)
 
-
-#%% Calc Prop Modes for Lantern
-
-calc_modes = False # set to True to calculate modes instead of using hardcoded list
-
-if calc_modes:
-    # unnecessary to calculate NA for lantern modes, but included for completeness
-    numerical_aperture = LPmodes.get_NA(n_clad, n_cap)
-    wave_number = 2*np.pi/wl
-    norm_freq = LPmodes.get_V(wave_number, r_clad, n_clad,
-                                n_cap)
-
-    modes = LPmodes.get_modes(norm_freq)
 
 #%%###########################################################################
 ### Initialise
@@ -372,9 +377,39 @@ plot_matrix = False
 save_matrix_plot = False
 
 if plot_matrix:
-        f_fig_path = 'hms-pl7_transfer_matrix'+f_suffix+'.pdf'
+        f_fig_path = 'hms-pl6_transfer_matrix'+f_suffix+'.pdf'
         plot_6mode_transfer_matrix(P_lm_array, Phi_lm_array, 
                                 ds, dz, ref_val,
                                 wl, r_core_ms, 
                                 n_modes=n_modes, n_cores=n_cores,
                                 save_fig=save_matrix_plot, f_path=f_fig_path)
+        
+
+#%%###########################################################################
+
+f_txt_path = f_path + f_prefix + 'summary_' + f_suffix + '.txt'
+with open(f_txt_path, 'w') as _f, \
+        contextlib.redirect_stdout(_f):
+
+    print("PL length:", z_len, "um")
+    print("taper_ratio:", taper_ratio)
+    print("mode selective core radius ratio:", coef_r_ms)
+
+    print("\nCheck each mode is guided (power ≈ 1):")
+    for i in range(6):
+        mode = modes[i]
+        ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
+        print(f"LP{mode[0]}{mode[1]}{ab}: {np.sum(P_lm_array[i,:])}")
+
+    print("\nCheck ratio of LP01 in core 1 to other cores (want ≈ 0):")
+    lp01_core1 = P_lm_array[0, 0]
+    for j in range(1, n_cores):
+        print(f"  Core {j+1}/Core 1: {P_lm_array[0, j]/lp01_core1:.3f}")
+
+    print("\nCheck ratio of mode powers in core 1 (want LP01 ≈ 1):")
+    for i in range(n_modes):
+        mode = modes[i]
+        ab = '' if mode[0] == 0 else ('b' if i % 2 == 1 else 'a')
+        print(f"  LP{mode[0]}{mode[1]}{ab}: {P_lm_array[i, 0]:.4f}")
+
+print(f"Summary written to {f_txt_path}")
