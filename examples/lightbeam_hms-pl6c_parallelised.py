@@ -50,7 +50,7 @@ z_len = 50000 # [um] -> range {4.5, 6}
 taper_ratio = 20 # -> range {20, 25}
 
 ## Output Radii ##
-r_core_wfs_out = 3.25 # [um]
+r_core_wfs_out = 4.1 # [um]
 
 coef_r_ms = 1.31 # free variable 
 r_core_ms_out = coef_r_ms * r_core_wfs_out  # [um]

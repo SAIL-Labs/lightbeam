@@ -58,7 +58,7 @@ coef_r_ms = 1.31 # free variable
 wl = 1.55 # wavelength [um]
 
 ## Output Radii ##
-r_core_wfs_out = 3.25 # [um]
+r_core_wfs_out = 4.1 # [um]
 r_clad_out = 155 # [um]
 core_spacing_out = 102.5 # [um]
 
