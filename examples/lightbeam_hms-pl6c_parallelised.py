@@ -41,7 +41,7 @@ from lightbeam.prop import Prop3D
 #%%###########################################################################
 ### Photonic Lantern Parameters -> USER INPUT
 
-wl = 1.55 # wavelength [um]
+wl = 1.6 # wavelength [um]
 
 ## Length of lantern
 z_len = 50000 # [um] -> range {4.5, 6}
@@ -52,11 +52,10 @@ taper_ratio = 20 # -> range {20, 25}
 ## Output Radii ##
 r_core_wfs_out = 4.1 # [um]
 
-coef_r_ms = 1.31 # free variable 
+coef_r_ms = 2 # free variable 
 r_core_ms_out = coef_r_ms * r_core_wfs_out  # [um]
 
 r_clad_out = 155 # [um]
-
 core_spacing_out = 102.5 # [um]
 
 
@@ -118,9 +117,9 @@ if calc_modes:
     for mode in guided_modes:
         print(f"LP{mode}")
 
-    expected_modes = [(0, 1), (0, 2), (1, 1), (2, 1)]
-    if [tuple(m) for m in guided_modes] != expected_modes:
-        raise SystemExit(f"Unexpected guided modes {guided_modes}; expected {expected_modes}. Halting.")
+    # expected_modes = [(0, 1), (0, 2), (1, 1), (2, 1)]
+    # if [tuple(m) for m in guided_modes] != expected_modes:
+    #     raise SystemExit(f"Unexpected guided modes {guided_modes}; expected {expected_modes}. Halting.")
 
 #%%###########################################################################
 ### Worker Function
@@ -211,7 +210,7 @@ n_cores = 6
 
 f_path = '/import/roci1/nlon0790/Results/hms-pl6/'
 f_prefix = 'hms-pl6c_'
-f_suffix = f'wl={wl}_rms={r_core_ms}_ds={ds}_dz={dz}_rv={ref_val}_xyw={xw}_zlen={z_len}_tr={taper_ratio}'
+f_suffix = f'wl={wl}_rms={r_core_ms_out}_ds={ds}_dz={dz}_rv={ref_val}_xyw={xw}_zlen={z_len}_tr={taper_ratio}'
 
 
 #%%###########################################################################

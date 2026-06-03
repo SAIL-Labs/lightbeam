@@ -260,7 +260,7 @@ for z_len in z_len_list:
                              final_scale=taper_ratio)
 
     ## File suffix for this iteration
-    f_suffix = f'wl={wl}_rms={r_core_ms}_ds={ds}_dz={dz}_rv={ref_val}_xyw={xw}_zlen={z_len}_tr={taper_ratio}'
+    f_suffix = f'wl={wl}_rms={r_core_ms_out}_ds={ds}_dz={dz}_rv={ref_val}_xyw={xw}_zlen={z_len}_tr={taper_ratio}'
 
     ## Update worker globals that change with z_len
     _w_mesh    = _mesh
