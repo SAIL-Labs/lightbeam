@@ -42,16 +42,20 @@ from lightbeam.prop import Prop3D
 #%%###########################################################################
 ### Photonic Lantern Parameters -> USER INPUT
 
-f_path = '/import/roci1/nlon0790/Results/hms-pl6/'
+f_path = '/media/data/nlon0790/hms-pl6c_config/'
 f_prefix = 'hms-pl6c_'
 
+save_outputs = False
+save_cores = False
+save_summary = True
+
 ## Lengths of lantern to sweep
-z_len_list = [45000, 50000, 55000, 60000] # [um]
+z_len_list = [55000, 60000] # [um]
 
 ## Set the final cross-sectional scale
 taper_ratio = 20 # -> range {20, 25}
 
-coef_r_ms = 1.31 # free variable 
+coef_r_ms = 1.5 # free variable 
 
 ##############################################################################
 
@@ -282,13 +286,14 @@ for z_len in z_len_list:
     U_out_array          = np.array([r[2] for r in results])
 
     ## Save Output Electric Fields
-    print("Saving PL output electric fields...")
-    with h5py.File(f_path+f_prefix+'U_out_weighted_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('U_out_weighted', data=U_out_weighted_array)
-    with h5py.File(f_path+f_prefix+'U_out_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('U_out', data=U_out_array)
-    with h5py.File(f_path+f_prefix+'U_out_weights_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('U_out_weights', data=U_out_weights_array)
+    if save_outputs:
+        print("Saving PL output electric fields...")
+        with h5py.File(f_path+f_prefix+'U_out_weighted_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('U_out_weighted', data=U_out_weighted_array)
+        with h5py.File(f_path+f_prefix+'U_out_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('U_out', data=U_out_array)
+        with h5py.File(f_path+f_prefix+'U_out_weights_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('U_out_weights', data=U_out_weights_array)
 
     ## Loop Through Modes to Isolate Cores and Calculate Modal Coefficients
     C_lm_array = []
@@ -337,16 +342,18 @@ for z_len in z_len_list:
     Phi_lm_array = np.array(Phi_lm_array) + np.pi
 
     ## Save Transfer Matrix Elements
-    print("Saving transfer matrix elements...")
-    with h5py.File(f_path+'cores/'+f_prefix+'C_lm_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('C_lm', data=C_lm_array)
-    with h5py.File(f_path+'cores/'+f_prefix+'P_lm_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('P_lm', data=P_lm_array)
-    with h5py.File(f_path+'cores/'+f_prefix+'Phi_lm_array_'+f_suffix+'.h5', 'w') as f:
-        f.create_dataset('Phi_lm', data=Phi_lm_array)
+    if save_cores:
+        print("Saving transfer matrix elements...")
+        with h5py.File(f_path+f_prefix+'C_lm_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('C_lm', data=C_lm_array)
+        with h5py.File(f_path+f_prefix+'P_lm_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('P_lm', data=P_lm_array)
+        with h5py.File(f_path+f_prefix+'Phi_lm_array_'+f_suffix+'.h5', 'w') as f:
+            f.create_dataset('Phi_lm', data=Phi_lm_array)
 
     ## Summary
-    f_txt_path = f_path + f_prefix + 'summary_' + f_suffix + '.txt'
-    print_summary(P_lm_array, modes, n_modes, n_cores,
-                  z_len, taper_ratio, coef_r_ms,
-                  to_print=True, to_file=f_txt_path)
+    if save_summary:
+        f_txt_path = f_path + f_prefix + 'summary_' + f_suffix + '.txt'
+        print_summary(P_lm_array, modes, n_modes, n_cores,
+                    z_len, taper_ratio, coef_r_ms,
+                    to_print=True, to_file=f_txt_path)
