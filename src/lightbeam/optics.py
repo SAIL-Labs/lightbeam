@@ -867,3 +867,74 @@ class lant19(OpticSys):
         
         plt.axis('equal')
         plt.show()
+
+
+
+##############################################################################
+class lant55_os(OpticSys):
+    '''
+        55 port oversampled lantern, with cores hex-packed into a
+        circularly-cropped bundle (row layout 3,6,7,8,7,8,7,6,3)
+    '''
+
+    def __init__(self, rcore, rclad,
+                 ncore, nclad, njack,
+                 core_spacing, z_ex, z_offset=0,
+                 scale_func=None, final_scale=1):
+
+        core_locs = self.get_55port_positions(core_spacing)
+        self.core_locs = core_locs
+
+        ## Cladding
+        clad = scaled_cyl([0,0], rclad, z_ex,
+                          nclad, njack, z_offset,
+                          scale_func=scale_func, final_scale=final_scale)
+
+        elmnts = [clad]
+
+        ## Cores Looped ** USE FOR GENERATING PLs
+        for loc in core_locs:
+            core = scaled_cyl(loc, rcore, z_ex,
+                              ncore, nclad, z_offset,
+                              scale_func=scale_func, final_scale=final_scale)
+
+            elmnts.append(core)
+
+        super().__init__(elmnts, njack)
+
+
+    ## The @staticmethod decorator is used in Python to define a method
+    ## that belongs to a class but does not require access to
+    ## the instance (self)
+    @staticmethod
+    def get_55port_positions(core_spacing, plot=False):
+        '''
+            hexagonally close-packed core positions, arranged in rows of
+            3,6,7,8,7,8,7,6,3 (summing to 55) so the bundle outline is
+            circular rather than the flat-sided hexagon of a ring lattice
+        '''
+
+        row_counts = [3, 6, 7, 8, 7, 8, 7, 6, 3]
+        dy = core_spacing * np.sqrt(3)/2
+        mid = (len(row_counts) - 1)/2
+
+        pos = []
+        for i, n in enumerate(row_counts):
+            ypos = (i - mid)*dy
+            for j in range(n):
+                xpos = (j - (n-1)/2)*core_spacing
+                pos.append([xpos, ypos])
+
+        pos = np.array(pos)
+
+        if not plot:
+            return pos
+
+        for p in pos:
+            plt.plot(*p,
+                     marker='.',
+                     ms=10,
+                     color='k')
+
+        plt.axis('equal')
+        plt.show()
